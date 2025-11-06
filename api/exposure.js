@@ -8,11 +8,16 @@ const EXPOSURE_BASE_URL = process.env.EXPOSURE_BASE_URL || 'https://basketball.e
 
 // Helper function to make authenticated requests to Exposure Events
 async function exposureRequest(endpoint, method = 'GET', body = null) {
+  // Try different authentication header formats
   const headers = {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Api-Key': EXPOSURE_API_KEY,
+    'X-Secret-Key': EXPOSURE_SECRET_KEY,
     'ApiKey': EXPOSURE_API_KEY,
     'SecretKey': EXPOSURE_SECRET_KEY,
-    'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'api-key': EXPOSURE_API_KEY,
+    'secret-key': EXPOSURE_SECRET_KEY
   };
 
   const options = {
@@ -29,6 +34,7 @@ async function exposureRequest(endpoint, method = 'GET', body = null) {
     
     if (!response.ok) {
       const errorText = await response.text();
+      console.error('Exposure API Error Response:', errorText);
       throw new Error(`Exposure API Error: ${response.status} - ${errorText}`);
     }
 
@@ -43,6 +49,50 @@ async function exposureRequest(endpoint, method = 'GET', body = null) {
     throw error;
   }
 }
+
+/**
+ * @swagger
+ * /api/v1/exposure/test-auth:
+ *   get:
+ *     summary: Test Exposure Events authentication
+ *     description: Test endpoint to verify API keys are working
+ *     tags: [Exposure Integration]
+ *     responses:
+ *       200:
+ *         description: Authentication test results
+ */
+router.get('/test-auth', async (req, res) => {
+  try {
+    // Check if keys are configured
+    const keysConfigured = {
+      apiKey: EXPOSURE_API_KEY ? 'Set' : 'Not Set',
+      secretKey: EXPOSURE_SECRET_KEY ? 'Set' : 'Not Set',
+      baseUrl: EXPOSURE_BASE_URL
+    };
+
+    // Try a simple request to test authentication
+    try {
+      const testResponse = await exposureRequest('/events?pageSize=1');
+      res.json({
+        status: 'Authentication successful',
+        keys: keysConfigured,
+        testRequest: 'Success',
+        sampleData: testResponse
+      });
+    } catch (error) {
+      res.json({
+        status: 'Authentication failed',
+        keys: keysConfigured,
+        error: error.message
+      });
+    }
+  } catch (error) {
+    res.status(500).json({
+      error: 'Test failed',
+      message: error.message
+    });
+  }
+});
 
 /**
  * @swagger
