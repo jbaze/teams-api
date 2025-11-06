@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('../swagger');
 const paymentRoutes = require('./payments');
+const exposureRoutes = require('./exposure');
 
 const app = express();
 
@@ -510,6 +511,9 @@ app.get('/api/health', (req, res) => {
 
 // Payment routes
 app.use('/api/v1/payments', paymentRoutes);
+
+// Exposure Events integration routes
+app.use('/api/v1/exposure', exposureRoutes);
 
 // 404 handler
 app.use((req, res) => {

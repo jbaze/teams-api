@@ -29,11 +29,15 @@ const options = {
     tags: [
       {
         name: 'Teams',
-        description: 'Team management endpoints'
+        description: 'Team management endpoints (local)'
       },
       {
         name: 'Payments',
         description: 'Stripe payment processing endpoints'
+      },
+      {
+        name: 'Exposure Integration',
+        description: 'Exposure Events platform integration endpoints'
       },
       {
         name: 'Health',
