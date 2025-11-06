@@ -1,0 +1,10 @@
+notepad .gitignore
+```
+
+Make sure it has:
+```
+node_modules/
+package-lock.json
+.env
+.DS_Store
+*.log

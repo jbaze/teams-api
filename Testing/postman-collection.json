@@ -1,0 +1,252 @@
+{
+  "info": {
+    "name": "Teams API",
+    "description": "API collection for Teams Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "teamId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "sessionId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
+        }
+      }
+    },
+    {
+      "name": "Create Team",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const response = pm.response.json();",
+              "    pm.collectionVariables.set('teamId', response.team.id);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"divisionId\": 1000,\n  \"name\": \"Team Exposure\",\n  \"gender\": 2,\n  \"paid\": true,\n  \"status\": 1,\n  \"address\": {\n    \"city\": \"Louisville\",\n    \"stateRegion\": \"KY\",\n    \"postalCode\": \"40205\"\n  },\n  \"players\": [\n    {\n      \"externalPlayerId\": \"P1\",\n      \"firstName\": \"Anderson\",\n      \"lastName\": \"Ginkins\",\n      \"number\": \"23\"\n    }\n  ],\n  \"notes\": \"Team needs a refund\",\n  \"website\": \"https://example.com\",\n  \"twitterHandle\": \"exposurebball\",\n  \"abbreviation\": \"TE\",\n  \"externalTeamId\": \"45465gG\",\n  \"instagramHandle\": \"exposurebball\",\n  \"facebookPage\": \"http://facebook.com/exposurebball\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/teams",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "teams"]
+        }
+      }
+    },
+    {
+      "name": "Get All Teams",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/teams",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "teams"]
+        }
+      }
+    },
+    {
+      "name": "Get All Teams (with pagination)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/teams?page=1&pageSize=10",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "teams"],
+          "query": [
+            {
+              "key": "page",
+              "value": "1"
+            },
+            {
+              "key": "pageSize",
+              "value": "10"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Team by ID",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/teams?id={{teamId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "teams"],
+          "query": [
+            {
+              "key": "id",
+              "value": "{{teamId}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Teams by Division",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/teams?divisionId=1000",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "teams"],
+          "query": [
+            {
+              "key": "divisionId",
+              "value": "1000"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Update Team",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Updated Team Name\",\n  \"paid\": true,\n  \"notes\": \"Updated team information\",\n  \"address\": {\n    \"city\": \"New York\",\n    \"stateRegion\": \"NY\"\n  }\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/teams?id={{teamId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "teams"],
+          "query": [
+            {
+              "key": "id",
+              "value": "{{teamId}}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create Checkout Session",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const response = pm.response.json();",
+              "    pm.collectionVariables.set('sessionId', response.sessionId);",
+              "    console.log('Checkout URL:', response.url);",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"teamId\": \"{{teamId}}\",\n  \"teamName\": \"Test Team\",\n  \"priceId\": \"price_1SQOyhPIlfT968CUdrbeDRTm\",\n  \"quantity\": 1,\n  \"successUrl\": \"http://localhost:3000/success?session_id={CHECKOUT_SESSION_ID}\",\n  \"cancelUrl\": \"http://localhost:3000/cancel\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payments/create-checkout-session",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payments", "create-checkout-session"]
+        }
+      }
+    },
+    {
+      "name": "Get Session Details",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payments/session/{{sessionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payments", "session", "{{sessionId}}"]
+        }
+      }
+    },
+    {
+      "name": "Verify Payment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payments/verify/{{sessionId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payments", "verify", "{{sessionId}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Team Payments",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payments/team/{{teamId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payments", "team", "{{teamId}}"]
+        }
+      }
+    },
+    {
+      "name": "Get Available Prices",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/payments/prices",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "payments", "prices"]
+        }
+      }
+    }
+  ]
+}
