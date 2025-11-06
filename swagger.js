@@ -18,12 +18,12 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-        description: 'Development server'
+        url: 'https://teams-api.vercel.app',
+        description: 'Production server'
       },
       {
-        url: 'https://your-api.vercel.app',
-        description: 'Production server'
+        url: 'http://localhost:3000',
+        description: 'Development server'
       }
     ],
     tags: [

@@ -40,6 +40,9 @@ app.get('/api-docs', (req, res) => {
   <script src="https://unpkg.com/swagger-ui-dist@5.10.3/swagger-ui-standalone-preset.js"></script>
   <script>
     window.onload = function() {
+      // Automatically detect the current server URL
+      const currentUrl = window.location.origin;
+      
       const ui = SwaggerUIBundle({
         url: '/api-docs/swagger.json',
         dom_id: '#swagger-ui',
@@ -51,7 +54,11 @@ app.get('/api-docs', (req, res) => {
         plugins: [
           SwaggerUIBundle.plugins.DownloadUrl
         ],
-        layout: "StandaloneLayout"
+        layout: "StandaloneLayout",
+        // Automatically use the current server
+        servers: [
+          { url: currentUrl, description: 'Current server' }
+        ]
       });
       window.ui = ui;
     };
