@@ -16,6 +16,6 @@
     "swagger-jsdoc": "^6.2.8"
   },
   "engines": {
-    "node": ">=18.x"
+    "node": "22.x"
   }
 }
