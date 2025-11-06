@@ -4,20 +4,17 @@ const router = express.Router();
 // Exposure Events API configuration
 const EXPOSURE_API_KEY = process.env.EXPOSURE_API_KEY || '9bZ9A99u99999M';
 const EXPOSURE_SECRET_KEY = process.env.EXPOSURE_SECRET_KEY || 'E99pWXF9emeW6Bs7X659lH9vhr7aPcOE';
-const EXPOSURE_BASE_URL = process.env.EXPOSURE_BASE_URL || 'https://basketball.exposureevents.com/api/v1';
+const EXPOSURE_BASE_URL = process.env.EXPOSURE_BASE_URL || 'https://baseball.exposureevents.com/api/v1';
 
 // Helper function to make authenticated requests to Exposure Events
 async function exposureRequest(endpoint, method = 'GET', body = null) {
-  // Try different authentication header formats
+  // Method 1: Try query parameters (common for Exposure Events)
+  const separator = endpoint.includes('?') ? '&' : '?';
+  const authEndpoint = `${endpoint}${separator}ApiKey=${EXPOSURE_API_KEY}&SecretKey=${EXPOSURE_SECRET_KEY}`;
+  
   const headers = {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-    'X-Api-Key': EXPOSURE_API_KEY,
-    'X-Secret-Key': EXPOSURE_SECRET_KEY,
-    'ApiKey': EXPOSURE_API_KEY,
-    'SecretKey': EXPOSURE_SECRET_KEY,
-    'api-key': EXPOSURE_API_KEY,
-    'secret-key': EXPOSURE_SECRET_KEY
+    'Accept': 'application/json'
   };
 
   const options = {
@@ -30,7 +27,8 @@ async function exposureRequest(endpoint, method = 'GET', body = null) {
   }
 
   try {
-    const response = await fetch(`${EXPOSURE_BASE_URL}${endpoint}`, options);
+    // Try with query parameters first (most common for Exposure Events)
+    const response = await fetch(`${EXPOSURE_BASE_URL}${authEndpoint}`, options);
     
     if (!response.ok) {
       const errorText = await response.text();
