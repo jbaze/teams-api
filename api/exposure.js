@@ -1,10 +1,9 @@
 const express = require('express');
 const crypto = require('crypto');
+const authManager = require('./auth-manager');
 const router = express.Router();
 
 // Exposure Events API configuration
-const EXPOSURE_API_KEY = process.env.EXPOSURE_API_KEY || '9bZ9A99u99999M';
-const EXPOSURE_SECRET_KEY = process.env.EXPOSURE_SECRET_KEY || 'E99pWXF9emeW6Bs7X659lH9vhr7aPcOE';
 const EXPOSURE_BASE_URL = process.env.EXPOSURE_BASE_URL || 'https://baseball.exposureevents.com/api/v1';
 
 // Helper function to create HMAC-SHA256 signature
@@ -25,11 +24,27 @@ function createSignature(apiKey, httpVerb, timestamp, relativeUri, secretKey) {
 
 // Helper function to make authenticated requests to Exposure Events
 async function exposureRequest(endpoint, method = 'GET', body = null) {
-  // Generate ISO 8601 timestamp
-  const timestamp = new Date().toISOString();
+  // Check if authenticated
+  if (!authManager.isReady()) {
+    throw new Error('Not authenticated. Please authenticate first using the /authenticate endpoint.');
+  }
+
+  // Get API keys from auth manager
+  const EXPOSURE_API_KEY = authManager.getApiKey();
+  const EXPOSURE_SECRET_KEY = authManager.getApiSecretKey();
+
+  // Generate ISO 8601 timestamp with 7 decimal places (as per Exposure Events requirement)
+  // Example: 2012-09-27T20:33:55.3564453Z
+  const now = new Date();
+  const isoString = now.toISOString(); // 2025-11-07T10:48:05.699Z
+  const timestamp = isoString.replace(/\.(\d{3})Z$/, (match, ms) => {
+    // Pad milliseconds to 7 digits (add 4 zeros)
+    return '.' + ms + '0000Z';
+  });
   
   // Get relative URI (without query string)
-  const relativeUri = endpoint.split('?')[0];
+  // The relative URI should be the full path including /api/v1
+  const relativeUri = `/api/v1${endpoint.split('?')[0]}`;
   
   // Create signature
   const signature = createSignature(
@@ -62,9 +77,6 @@ async function exposureRequest(endpoint, method = 'GET', body = null) {
 
   try {
     const url = `${EXPOSURE_BASE_URL}${endpoint}`;
-    console.log('Making request to:', url);
-    console.log('Authentication header:', authHeader);
-    console.log('Timestamp:', timestamp);
     
     const response = await fetch(url, options);
     
@@ -88,6 +100,83 @@ async function exposureRequest(endpoint, method = 'GET', body = null) {
 
 /**
  * @swagger
+ * /api/v1/exposure/authenticate:
+ *   post:
+ *     summary: Authenticate with Exposure Events
+ *     description: Authenticate event director and obtain API keys (automatically decoded from base64)
+ *     tags: [Exposure Integration]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *                 example: your-username
+ *               password:
+ *                 type: string
+ *                 example: your-password
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *       401:
+ *         description: Authentication failed
+ *       500:
+ *         description: Server error
+ */
+router.post('/authenticate', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+      return res.status(400).json({
+        error: 'Missing credentials',
+        message: 'Username and password are required'
+      });
+    }
+
+    const result = await authManager.authenticate(username, password);
+    
+    res.json({
+      success: true,
+      message: result.message,
+      accountId: result.accountId,
+      email: result.email
+    });
+  } catch (error) {
+    res.status(401).json({
+      error: 'Authentication failed',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/v1/exposure/auth-status:
+ *   get:
+ *     summary: Check authentication status
+ *     description: Check if the API is authenticated with Exposure Events
+ *     tags: [Exposure Integration]
+ *     responses:
+ *       200:
+ *         description: Authentication status
+ */
+router.get('/auth-status', async (req, res) => {
+  const accountInfo = authManager.getAccountInfo();
+  res.json({
+    isAuthenticated: authManager.isReady(),
+    ...accountInfo
+  });
+});
+
+/**
+ * @swagger
  * /api/v1/exposure/test-auth:
  *   get:
  *     summary: Test Exposure Events authentication
@@ -100,9 +189,11 @@ async function exposureRequest(endpoint, method = 'GET', body = null) {
 router.get('/test-auth', async (req, res) => {
   try {
     // Check if keys are configured
+    const accountInfo = authManager.getAccountInfo();
     const keysConfigured = {
-      apiKey: EXPOSURE_API_KEY ? 'Set' : 'Not Set',
-      secretKey: EXPOSURE_SECRET_KEY ? 'Set' : 'Not Set',
+      isAuthenticated: authManager.isReady(),
+      accountId: accountInfo.accountId,
+      email: accountInfo.email,
       baseUrl: EXPOSURE_BASE_URL
     };
 
@@ -357,6 +448,9 @@ router.get('/teams/:teamId', async (req, res) => {
  *               - DivisionId
  *               - Name
  *             properties:
+ *               EventId:
+ *                 type: integer
+ *                 example: 30
  *               DivisionId:
  *                 type: integer
  *                 example: 1000
@@ -420,6 +514,7 @@ router.post('/teams', async (req, res) => {
   try {
     // Transform frontend data to Exposure Events format
     const teamData = {
+      EventId: req.body.eventId || req.body.EventId,
       DivisionId: req.body.divisionId || req.body.DivisionId,
       Name: req.body.name || req.body.Name,
       Gender: req.body.gender || req.body.Gender,
@@ -467,6 +562,8 @@ router.post('/teams', async (req, res) => {
  *           schema:
  *             type: object
  *             properties:
+ *               EventId:
+ *                 type: integer
  *               Name:
  *                 type: string
  *               Gender:
@@ -492,34 +589,49 @@ router.post('/teams', async (req, res) => {
 router.put('/teams/:teamId', async (req, res) => {
   try {
     const { teamId } = req.params;
-    
-    // Transform frontend data to Exposure Events format
-    const updateData = {};
-    
-    if (req.body.name || req.body.Name) updateData.Name = req.body.name || req.body.Name;
-    if (req.body.gender !== undefined || req.body.Gender !== undefined) {
-      updateData.Gender = req.body.gender || req.body.Gender;
-    }
-    if (req.body.paid !== undefined || req.body.Paid !== undefined) {
-      updateData.Paid = req.body.paid || req.body.Paid;
-    }
-    if (req.body.status !== undefined || req.body.Status !== undefined) {
-      updateData.Status = req.body.status || req.body.Status;
-    }
-    if (req.body.address || req.body.Address) updateData.Address = req.body.address || req.body.Address;
-    if (req.body.players || req.body.Players) updateData.Players = req.body.players || req.body.Players;
-    if (req.body.notes !== undefined || req.body.Notes !== undefined) {
-      updateData.Notes = req.body.notes || req.body.Notes;
-    }
-    if (req.body.website || req.body.Website) updateData.Website = req.body.website || req.body.Website;
-    if (req.body.twitterHandle || req.body.TwitterHandle) {
-      updateData.TwitterHandle = req.body.twitterHandle || req.body.TwitterHandle;
-    }
-    if (req.body.abbreviation || req.body.Abbreviation) {
-      updateData.Abbreviation = req.body.abbreviation || req.body.Abbreviation;
-    }
 
-    const data = await exposureRequest(`/teams/${teamId}`, 'PUT', updateData);
+    console.log('PUT /teams/:teamId called');
+    console.log('Team ID:', teamId);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+    // First, get the existing team data
+    const existingTeamResponse = await exposureRequest(`/teams/${teamId}`);
+    console.log('Existing team data:', JSON.stringify(existingTeamResponse, null, 2));
+    
+    // Extract the Team object from the response
+    const existingTeam = existingTeamResponse.Team || existingTeamResponse;
+
+    // Extract EventId from various possible locations
+    const eventId = req.body.eventId || req.body.EventId || existingTeam.EventId || existingTeam.Event?.Id;
+    const divisionId = req.body.divisionId || req.body.DivisionId || existingTeam.DivisionId || existingTeam.Division?.Id;
+    
+    console.log('Extracted EventId:', eventId);
+    console.log('Extracted DivisionId:', divisionId);
+
+    // Transform frontend data to Exposure Events format, merging with existing data
+    const teamData = {
+      Id: parseInt(teamId),
+      EventId: eventId,
+      DivisionId: divisionId,
+      Name: req.body.name || req.body.Name || existingTeam.Name,
+      Gender: req.body.gender !== undefined ? req.body.gender : (req.body.Gender !== undefined ? req.body.Gender : existingTeam.Gender),
+      Paid: req.body.paid !== undefined ? req.body.paid : (req.body.Paid !== undefined ? req.body.Paid : existingTeam.Paid),
+      Status: req.body.status !== undefined ? req.body.status : (req.body.Status !== undefined ? req.body.Status : existingTeam.Status),
+      Address: req.body.address || req.body.Address || existingTeam.Address,
+      Players: req.body.players || req.body.Players || existingTeam.Players || [],
+      Notes: req.body.notes !== undefined ? req.body.notes : (req.body.Notes !== undefined ? req.body.Notes : (existingTeam.Notes || '')),
+      Website: req.body.website || req.body.Website || existingTeam.Website || '',
+      TwitterHandle: req.body.twitterHandle || req.body.TwitterHandle || existingTeam.TwitterHandle || '',
+      Abbreviation: req.body.abbreviation || req.body.Abbreviation || existingTeam.Abbreviation || '',
+      ExternalTeamId: req.body.externalTeamId || req.body.ExternalTeamId || existingTeam.ExternalTeamId || '',
+      InstagramHandle: req.body.instagramHandle || req.body.InstagramHandle || existingTeam.InstagramHandle || '',
+      FacebookPage: req.body.facebookPage || req.body.FacebookPage || existingTeam.FacebookPage || ''
+    };
+
+    console.log('Update data being sent:', JSON.stringify(teamData, null, 2));
+    console.log('Endpoint:', `/teams`);
+
+    const data = await exposureRequest(`/teams`, 'PUT', teamData);
     res.json(data);
   } catch (error) {
     res.status(500).json({
