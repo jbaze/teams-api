@@ -546,7 +546,7 @@ router.post('/teams', async (req, res) => {
  * /api/v1/exposure/teams/{teamId}:
  *   put:
  *     summary: Update team in Exposure Events
- *     description: Update an existing team in Exposure Events platform
+ *     description: Update an existing team in Exposure Events platform. Only provided fields will be updated.
  *     tags: [Exposure Integration]
  *     parameters:
  *       - in: path
@@ -564,20 +564,97 @@ router.post('/teams', async (req, res) => {
  *             properties:
  *               EventId:
  *                 type: integer
+ *                 description: Event identifier
+ *               DivisionId:
+ *                 type: integer
+ *                 description: Division identifier
  *               Name:
  *                 type: string
+ *                 description: Team name
+ *               Age:
+ *                 type: integer
+ *                 description: Age group/category
+ *               Grade:
+ *                 type: integer
+ *                 description: Grade level
+ *               ExternalTeamId:
+ *                 type: string
+ *                 description: External team identifier
  *               Gender:
  *                 type: integer
+ *                 description: Gender (1=Male, 2=Female)
  *               Paid:
  *                 type: boolean
+ *                 description: Payment status
  *               Status:
  *                 type: integer
+ *                 description: Team status
  *               Address:
  *                 type: object
- *               Players:
- *                 type: array
+ *                 properties:
+ *                   City:
+ *                     type: string
+ *                   StateRegion:
+ *                     type: string
+ *                   PostalCode:
+ *                     type: string
  *               Notes:
  *                 type: string
+ *                 description: Team notes
+ *               Website:
+ *                 type: string
+ *                 description: Team website URL
+ *               TwitterHandle:
+ *                 type: string
+ *                 description: Twitter handle
+ *               Abbreviation:
+ *                 type: string
+ *                 description: Team abbreviation
+ *               Players:
+ *                 type: array
+ *                 description: Array of players to add/update
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     FirstName:
+ *                       type: string
+ *                     LastName:
+ *                       type: string
+ *                     City:
+ *                       type: string
+ *                     StateRegion:
+ *                       type: string
+ *                     PostalCode:
+ *                       type: string
+ *                     Position:
+ *                       type: string
+ *                     Bats:
+ *                       type: integer
+ *                       description: Batting preference (0=Right, 1=Left, 2=Switch)
+ *                     Throws:
+ *                       type: integer
+ *                       description: Throwing hand (0=Right, 1=Left)
+ *                     Height:
+ *                       type: string
+ *                       description: Player height
+ *                     Weight:
+ *                       type: integer
+ *                       description: Player weight (max 3 digits)
+ *                     GradudationYear:
+ *                       type: integer
+ *                       description: Graduation year (4 digits)
+ *                     Grade:
+ *                       type: string
+ *                       description: Current grade
+ *                     School:
+ *                       type: string
+ *                       description: School name
+ *                     Number:
+ *                       type: integer
+ *                       description: Jersey number (max 3 digits)
+ *                     Active:
+ *                       type: boolean
+ *                       description: Player active status
  *     responses:
  *       200:
  *         description: Team updated successfully
@@ -594,48 +671,179 @@ router.put('/teams/:teamId', async (req, res) => {
     console.log('Team ID:', teamId);
     console.log('Request body:', JSON.stringify(req.body, null, 2));
 
-    // First, get the existing team data
-    const existingTeamResponse = await exposureRequest(`/teams/${teamId}`);
-    console.log('Existing team data:', JSON.stringify(existingTeamResponse, null, 2));
-    
-    // Extract the Team object from the response
-    const existingTeam = existingTeamResponse.Team || existingTeamResponse;
-
-    // Extract EventId from various possible locations
-    const eventId = req.body.eventId || req.body.EventId || existingTeam.EventId || existingTeam.Event?.Id;
-    const divisionId = req.body.divisionId || req.body.DivisionId || existingTeam.DivisionId || existingTeam.Division?.Id;
-    
-    console.log('Extracted EventId:', eventId);
-    console.log('Extracted DivisionId:', divisionId);
-
-    // Transform frontend data to Exposure Events format, merging with existing data
+    // Build update data - only include fields that are provided in the request
     const teamData = {
-      Id: parseInt(teamId),
-      EventId: eventId,
-      DivisionId: divisionId,
-      Name: req.body.name || req.body.Name || existingTeam.Name,
-      Gender: req.body.gender !== undefined ? req.body.gender : (req.body.Gender !== undefined ? req.body.Gender : existingTeam.Gender),
-      Paid: req.body.paid !== undefined ? req.body.paid : (req.body.Paid !== undefined ? req.body.Paid : existingTeam.Paid),
-      Status: req.body.status !== undefined ? req.body.status : (req.body.Status !== undefined ? req.body.Status : existingTeam.Status),
-      Address: req.body.address || req.body.Address || existingTeam.Address,
-      Players: req.body.players || req.body.Players || existingTeam.Players || [],
-      Notes: req.body.notes !== undefined ? req.body.notes : (req.body.Notes !== undefined ? req.body.Notes : (existingTeam.Notes || '')),
-      Website: req.body.website || req.body.Website || existingTeam.Website || '',
-      TwitterHandle: req.body.twitterHandle || req.body.TwitterHandle || existingTeam.TwitterHandle || '',
-      Abbreviation: req.body.abbreviation || req.body.Abbreviation || existingTeam.Abbreviation || '',
-      ExternalTeamId: req.body.externalTeamId || req.body.ExternalTeamId || existingTeam.ExternalTeamId || '',
-      InstagramHandle: req.body.instagramHandle || req.body.InstagramHandle || existingTeam.InstagramHandle || '',
-      FacebookPage: req.body.facebookPage || req.body.FacebookPage || existingTeam.FacebookPage || ''
+      Id: parseInt(teamId)
     };
 
+    // Add all possible fields if they are provided (supports both camelCase and PascalCase)
+    if (req.body.eventId !== undefined || req.body.EventId !== undefined) {
+      teamData.EventId = req.body.eventId || req.body.EventId;
+    }
+    if (req.body.divisionId !== undefined || req.body.DivisionId !== undefined) {
+      teamData.DivisionId = req.body.divisionId || req.body.DivisionId;
+    }
+    if (req.body.name || req.body.Name) {
+      teamData.Name = req.body.name || req.body.Name;
+    }
+    if (req.body.age !== undefined || req.body.Age !== undefined) {
+      teamData.Age = req.body.age || req.body.Age;
+    }
+    if (req.body.grade !== undefined || req.body.Grade !== undefined) {
+      teamData.Grade = req.body.grade || req.body.Grade;
+    }
+    if (req.body.externalTeamId || req.body.ExternalTeamId) {
+      teamData.ExternalTeamId = req.body.externalTeamId || req.body.ExternalTeamId;
+    }
+    if (req.body.gender !== undefined || req.body.Gender !== undefined) {
+      teamData.Gender = req.body.gender || req.body.Gender;
+    }
+    if (req.body.paid !== undefined || req.body.Paid !== undefined) {
+      teamData.Paid = req.body.paid || req.body.Paid;
+    }
+    if (req.body.status !== undefined || req.body.Status !== undefined) {
+      teamData.Status = req.body.status || req.body.Status;
+    }
+    
+    // Address fields
+    if (req.body.address || req.body.Address) {
+      const addr = req.body.address || req.body.Address;
+      teamData.Address = {
+        City: addr.city || addr.City,
+        StateRegion: addr.stateRegion || addr.StateRegion,
+        PostalCode: addr.postalCode || addr.PostalCode
+      };
+    }
+    
+    if (req.body.notes !== undefined || req.body.Notes !== undefined) {
+      teamData.Notes = req.body.notes || req.body.Notes;
+    }
+    if (req.body.website || req.body.Website) {
+      teamData.Website = req.body.website || req.body.Website;
+    }
+    if (req.body.twitterHandle || req.body.TwitterHandle) {
+      teamData.TwitterHandle = req.body.twitterHandle || req.body.TwitterHandle;
+    }
+    if (req.body.abbreviation || req.body.Abbreviation) {
+      teamData.Abbreviation = req.body.abbreviation || req.body.Abbreviation;
+    }
+    
+    // Players array with all supported fields
+    if (req.body.players || req.body.Players) {
+      const playersInput = req.body.players || req.body.Players;
+      teamData.Players = playersInput.map(player => {
+        const playerData = {};
+        
+        if (player.firstName || player.FirstName) playerData.FirstName = player.firstName || player.FirstName;
+        if (player.lastName || player.LastName) playerData.LastName = player.lastName || player.LastName;
+        if (player.city || player.City) playerData.City = player.city || player.City;
+        if (player.stateRegion || player.StateRegion) playerData.StateRegion = player.stateRegion || player.StateRegion;
+        if (player.postalCode || player.PostalCode) playerData.PostalCode = player.postalCode || player.PostalCode;
+        if (player.position || player.Position) playerData.Position = player.position || player.Position;
+        if (player.bats !== undefined || player.Bats !== undefined) playerData.Bats = player.bats || player.Bats;
+        if (player.throws !== undefined || player.Throws !== undefined) playerData.Throws = player.throws || player.Throws;
+        if (player.height || player.Height) playerData.Height = player.height || player.Height;
+        if (player.weight !== undefined || player.Weight !== undefined) playerData.Weight = player.weight || player.Weight;
+        if (player.graduationYear || player.GraduationYear || player.gradudationYear || player.GradudationYear) {
+          playerData.GradudationYear = player.graduationYear || player.GraduationYear || player.gradudationYear || player.GradudationYear;
+        }
+        if (player.grade || player.Grade) playerData.Grade = player.grade || player.Grade;
+        if (player.school || player.School) playerData.School = player.school || player.School;
+        if (player.number !== undefined || player.Number !== undefined) playerData.Number = player.number || player.Number;
+        if (player.active !== undefined || player.Active !== undefined) playerData.Active = player.active || player.Active;
+        
+        return playerData;
+      });
+    }
+
     console.log('Update data being sent:', JSON.stringify(teamData, null, 2));
-    console.log('Endpoint:', `/teams`);
 
     const data = await exposureRequest(`/teams`, 'PUT', teamData);
     res.json(data);
   } catch (error) {
     res.status(500).json({
       error: 'Failed to update team',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /api/v1/exposure/players:
+ *   get:
+ *     summary: Get players
+ *     description: Retrieve players with optional filters (paginated). All parameters are optional.
+ *     tags: [Exposure Integration]
+ *     parameters:
+ *       - in: query
+ *         name: teamIds
+ *         schema:
+ *           type: string
+ *         description: Team ID or comma-separated list of team IDs (e.g., "123" or "123,456,789")
+ *       - in: query
+ *         name: eventId
+ *         schema:
+ *           type: integer
+ *         description: Filter by event ID
+ *       - in: query
+ *         name: divisionId
+ *         schema:
+ *           type: integer
+ *         description: Filter by division ID
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *         description: Page number
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *           default: 50
+ *         description: Results per page
+ *       - in: query
+ *         name: includes
+ *         schema:
+ *           type: string
+ *         description: Additional data to include (comma-separated)
+ *     responses:
+ *       200:
+ *         description: Players retrieved successfully
+ *       500:
+ *         description: Error fetching players
+ */
+router.get('/players', async (req, res) => {
+  try {
+    const { teamIds, eventId, divisionId, page, pageSize, includes } = req.query;
+
+    console.log('GET /players called');
+    console.log('Query params:', { teamIds, eventId, divisionId, page, pageSize, includes });
+
+    // Build query string - all filters are optional
+    const params = new URLSearchParams();
+    if (teamIds) params.append('teamids', teamIds);
+    if (eventId) params.append('eventid', eventId);
+    if (divisionId) params.append('divisionid', divisionId);
+    if (page) params.append('page', page);
+    if (pageSize) params.append('pagesize', pageSize);
+    
+    // Automatically include teams, and add any additional includes from user
+    let includesValue = 'teams';
+    if (includes) {
+      includesValue = includes.includes('teams') ? includes : `teams,${includes}`;
+    }
+    params.append('includes', includesValue);
+
+    const endpoint = `/players?${params.toString()}`;
+    console.log('Endpoint:', endpoint);
+
+    const data = await exposureRequest(endpoint);
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({
+      error: 'Failed to fetch players',
       message: error.message
     });
   }
