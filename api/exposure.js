@@ -3,6 +3,9 @@ const crypto = require('crypto');
 const authManager = require('./auth-manager');
 const router = express.Router();
 
+const EXPOSURE_USERNAME = 'techup.exposure';
+const EXPOSURE_PASSWORD = '_Virtual07!';
+
 // Exposure Events API configuration
 const EXPOSURE_BASE_URL = process.env.EXPOSURE_BASE_URL || 'https://baseball.exposureevents.com/api/v1';
 
@@ -23,8 +26,20 @@ function createSignature(apiKey, httpVerb, timestamp, relativeUri, secretKey) {
 }
 
 // Helper function to make authenticated requests to Exposure Events
-async function exposureRequest(endpoint, method = 'GET', body = null) {
-  // Check if authenticated
+async function exposureRequest(endpoint, method = 'GET', body = null, retryCount = 0) {
+  // Check if authenticated, if not try to re-authenticate
+  if (!authManager.isReady() && retryCount === 0) {
+    console.log('Not authenticated, attempting to authenticate with hardcoded credentials...');
+    try {
+      await authManager.authenticate(EXPOSURE_USERNAME, EXPOSURE_PASSWORD);
+      console.log('Authentication successful, retrying request...');
+      return await exposureRequest(endpoint, method, body, retryCount + 1);
+    } catch (authError) {
+      console.error('Authentication failed:', authError.message);
+      throw new Error('Not authenticated. Authentication attempt failed: ' + authError.message);
+    }
+  }
+  
   if (!authManager.isReady()) {
     throw new Error('Not authenticated. Please authenticate first using the /authenticate endpoint.');
   }
