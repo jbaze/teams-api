@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const authManager = require('./auth-manager');
 const router = express.Router();
 
-const EXPOSURE_USERNAME = 'techup.exposure';
+const EXPOSURE_USERNAME = 'techup';
 const EXPOSURE_PASSWORD = '_Virtual07!';
 
 // Exposure Events API configuration
