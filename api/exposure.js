@@ -3,8 +3,8 @@ const crypto = require('crypto');
 const authManager = require('./auth-manager');
 const router = express.Router();
 
-const EXPOSURE_USERNAME = 'techup';
-const EXPOSURE_PASSWORD = '_Virtual07!';
+const EXPOSURE_USERNAME = 'tcaymol';
+const EXPOSURE_PASSWORD = 'Buggy4498!';
 
 // Exposure Events API configuration
 const EXPOSURE_BASE_URL = process.env.EXPOSURE_BASE_URL || 'https://baseball.exposureevents.com/api/v1';
