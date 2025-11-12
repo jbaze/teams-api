@@ -14,21 +14,78 @@ let paymentSessions = [];
  * /api/v1/payments/create-checkout-session:
  *   post:
  *     summary: Create Stripe checkout session
- *     description: Create a new Stripe Checkout session for team registration payment.
+ *     description: Create a new Stripe Checkout session for team registration, player camp, or player metrics payment. Either teamId or playerId is required. Use paymentType to automatically select the correct price.
  *     tags: [Payments]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/CheckoutSession'
- *           example:
- *             teamId: team-123
- *             teamName: Team Exposure
- *             priceId: price_1SQOyhPIlfT968CUdrbeDRTm
- *             quantity: 1
- *             successUrl: https://yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}
- *             cancelUrl: https://yourdomain.com/cancel
+ *             type: object
+ *             properties:
+ *               teamId:
+ *                 type: string
+ *                 description: Team ID (required for team payments)
+ *               teamName:
+ *                 type: string
+ *                 description: Team name
+ *               playerId:
+ *                 type: string
+ *                 description: Player ID (required for player payments)
+ *               playerFirstName:
+ *                 type: string
+ *                 description: Player first name
+ *               playerLastName:
+ *                 type: string
+ *                 description: Player last name
+ *               paymentType:
+ *                 type: string
+ *                 enum: [team, camp, metrics]
+ *                 description: Payment type - automatically selects correct price ID
+ *               priceId:
+ *                 type: string
+ *                 description: Stripe price ID (optional - overrides paymentType)
+ *               quantity:
+ *                 type: integer
+ *                 default: 1
+ *               successUrl:
+ *                 type: string
+ *               cancelUrl:
+ *                 type: string
+ *           examples:
+ *             teamPayment:
+ *               summary: Team Registration
+ *               value:
+ *                 teamId: team-123
+ *                 teamName: Team Exposure
+ *                 paymentType: team
+ *                 quantity: 1
+ *                 successUrl: https://yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}
+ *                 cancelUrl: https://yourdomain.com/cancel
+ *             playerCampPayment:
+ *               summary: Player Camp Registration
+ *               value:
+ *                 playerId: player-456
+ *                 playerFirstName: John
+ *                 playerLastName: Doe
+ *                 teamId: team-123
+ *                 teamName: Team Exposure
+ *                 paymentType: camp
+ *                 quantity: 1
+ *                 successUrl: https://yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}
+ *                 cancelUrl: https://yourdomain.com/cancel
+ *             playerMetricsPayment:
+ *               summary: Player Metrics Payment
+ *               value:
+ *                 playerId: player-456
+ *                 playerFirstName: John
+ *                 playerLastName: Doe
+ *                 teamId: team-123
+ *                 teamName: Team Exposure
+ *                 paymentType: metrics
+ *                 quantity: 1
+ *                 successUrl: https://yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}
+ *                 cancelUrl: https://yourdomain.com/cancel
  *     responses:
  *       200:
  *         description: Checkout session created successfully
@@ -48,6 +105,21 @@ let paymentSessions = [];
  *                 publicKey:
  *                   type: string
  *                   description: Stripe public key for frontend
+ *                 teamId:
+ *                   type: string
+ *                   description: Team ID (if team payment)
+ *                 teamName:
+ *                   type: string
+ *                   description: Team name (if team payment)
+ *                 playerId:
+ *                   type: string
+ *                   description: Player ID (if player payment)
+ *                 playerFirstName:
+ *                   type: string
+ *                   description: Player first name (if player payment)
+ *                 playerLastName:
+ *                   type: string
+ *                   description: Player last name (if player payment)
  *       400:
  *         description: Bad request - missing required fields
  *         content:
@@ -59,25 +131,72 @@ let paymentSessions = [];
  */
 /**
  * POST /api/v1/payments/create-checkout-session
- * Create a Stripe checkout session for team registration payment
+ * Create a Stripe checkout session for team registration, player camp, or player metrics payment
  */
 router.post('/create-checkout-session', async (req, res) => {
   try {
     const {
-      teamId,
-      teamName,
-      priceId = 'price_1SQOyhPIlfT968CUdrbeDRTm', // Default price ID
+      teamId, // Always optional - can be provided for player payments too
+      teamName, // Always optional - can be provided for player payments too
+      playerId,
+      playerFirstName,
+      playerLastName,
+      paymentType, // 'team', 'camp', or 'metrics'
+      priceId, // Optional: override automatic price selection
       quantity = 1,
       successUrl,
       cancelUrl
     } = req.body;
 
-    // Validation
-    if (!teamId) {
+    // Validation - either teamId or playerId is required
+    if (!teamId && !playerId) {
       return res.status(400).json({
         error: 'Bad Request',
-        message: 'teamId is required'
+        message: 'Either teamId or playerId is required'
       });
+    }
+
+    // Determine price ID based on paymentType if not explicitly provided
+    let finalPriceId = priceId;
+    if (!finalPriceId && paymentType) {
+      switch (paymentType.toLowerCase()) {
+        case 'team':
+          finalPriceId = process.env.STRIPE_PRICE_TEAM;
+          break;
+        case 'camp':
+          finalPriceId = process.env.STRIPE_PRICE_PLAYER_CAMP;
+          break;
+        case 'metrics':
+          finalPriceId = process.env.STRIPE_PRICE_PLAYER_METRICS;
+          break;
+        default:
+          return res.status(400).json({
+            error: 'Bad Request',
+            message: 'Invalid paymentType. Must be "team", "camp", or "metrics"'
+          });
+      }
+    }
+
+    // Default to team price if still not set
+    if (!finalPriceId) {
+      finalPriceId = process.env.STRIPE_PRICE_TEAM;
+    }
+
+    // Build metadata based on payment type
+    const metadata = {};
+    // Always include team info if provided (even for player payments)
+    if (teamId) {
+      metadata.teamId = teamId;
+      metadata.teamName = teamName || '';
+    }
+    // Include player info if provided
+    if (playerId) {
+      metadata.playerId = playerId;
+      metadata.playerFirstName = playerFirstName || '';
+      metadata.playerLastName = playerLastName || '';
+    }
+    if (paymentType) {
+      metadata.paymentType = paymentType;
     }
 
     // Create Stripe checkout session
@@ -85,35 +204,65 @@ router.post('/create-checkout-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: [
         {
-          price: priceId,
+          price: finalPriceId,
           quantity: quantity,
         },
       ],
       mode: 'payment',
       success_url: successUrl || `${req.headers.origin || 'http://localhost:3000'}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl || `${req.headers.origin || 'http://localhost:3000'}/cancel`,
-      metadata: {
-        teamId: teamId,
-        teamName: teamName || 'Unknown Team'
-      },
-      client_reference_id: teamId,
+      metadata: metadata,
+      client_reference_id: teamId || playerId,
     });
 
     // Store session info
-    paymentSessions.push({
+    const sessionData = {
       sessionId: session.id,
-      teamId: teamId,
-      teamName: teamName,
       amount: session.amount_total,
       status: 'pending',
       createdAt: new Date().toISOString()
-    });
+    };
 
-    res.status(200).json({
+    // Add team info if provided (even for player payments)
+    if (teamId) {
+      sessionData.teamId = teamId;
+      sessionData.teamName = teamName;
+    }
+    // Add player info if provided
+    if (playerId) {
+      sessionData.playerId = playerId;
+      sessionData.playerFirstName = playerFirstName;
+      sessionData.playerLastName = playerLastName;
+    }
+    if (paymentType) {
+      sessionData.paymentType = paymentType;
+    }
+
+    paymentSessions.push(sessionData);
+
+    // Build response
+    const response = {
       sessionId: session.id,
       url: session.url,
       publicKey: process.env.STRIPE_PUBLIC_KEY || 'pk_test_51SPufqPIlfT968CUHp8ZnkqkWGIz2rNsscwJnCHAuRrIuiId3JBVxXYMDUaaUcGBh23aWT3swsxdz8OeSXBPzxgz00lVq6kOw8'
-    });
+    };
+
+    // Include team info in response if provided
+    if (teamId) {
+      response.teamId = teamId;
+      response.teamName = teamName;
+    }
+    // Include player info in response if provided
+    if (playerId) {
+      response.playerId = playerId;
+      response.playerFirstName = playerFirstName;
+      response.playerLastName = playerLastName;
+    }
+    if (paymentType) {
+      response.paymentType = paymentType;
+    }
+
+    res.status(200).json(response);
   } catch (error) {
     console.error('Stripe error:', error);
     res.status(500).json({
@@ -165,11 +314,9 @@ router.get('/session/:sessionId', async (req, res) => {
     // Find local session data
     const localSession = paymentSessions.find(s => s.sessionId === sessionId);
 
-    res.status(200).json({
+    const responseData = {
       session: {
         id: session.id,
-        teamId: session.metadata?.teamId || localSession?.teamId,
-        teamName: session.metadata?.teamName || localSession?.teamName,
         status: session.payment_status,
         amount: session.amount_total,
         currency: session.currency,
@@ -177,7 +324,22 @@ router.get('/session/:sessionId', async (req, res) => {
         customerEmail: session.customer_details?.email,
         createdAt: new Date(session.created * 1000).toISOString()
       }
-    });
+    };
+
+    // Add team info if present
+    if (session.metadata?.teamId || localSession?.teamId) {
+      responseData.session.teamId = session.metadata?.teamId || localSession?.teamId;
+      responseData.session.teamName = session.metadata?.teamName || localSession?.teamName;
+    }
+
+    // Add player info if present
+    if (session.metadata?.playerId || localSession?.playerId) {
+      responseData.session.playerId = session.metadata?.playerId || localSession?.playerId;
+      responseData.session.playerFirstName = session.metadata?.playerFirstName || localSession?.playerFirstName;
+      responseData.session.playerLastName = session.metadata?.playerLastName || localSession?.playerLastName;
+    }
+
+    res.status(200).json(responseData);
   } catch (error) {
     console.error('Error retrieving session:', error);
     res.status(500).json({
@@ -252,20 +414,43 @@ router.get('/verify/:sessionId', async (req, res) => {
         paymentSessions[localSessionIndex].paidAt = new Date().toISOString();
       }
 
-      res.status(200).json({
+      const responseData = {
         verified: true,
         status: 'paid',
-        teamId: session.metadata?.teamId,
         amount: session.amount_total,
         currency: session.currency,
         customerEmail: session.customer_details?.email
-      });
+      };
+
+      // Add team info if present
+      if (session.metadata?.teamId) {
+        responseData.teamId = session.metadata.teamId;
+        responseData.teamName = session.metadata.teamName;
+      }
+
+      // Add player info if present
+      if (session.metadata?.playerId) {
+        responseData.playerId = session.metadata.playerId;
+        responseData.playerFirstName = session.metadata.playerFirstName;
+        responseData.playerLastName = session.metadata.playerLastName;
+      }
+
+      res.status(200).json(responseData);
     } else {
-      res.status(200).json({
+      const responseData = {
         verified: false,
-        status: session.payment_status,
-        teamId: session.metadata?.teamId
-      });
+        status: session.payment_status
+      };
+
+      // Add team/player info if present
+      if (session.metadata?.teamId) {
+        responseData.teamId = session.metadata.teamId;
+      }
+      if (session.metadata?.playerId) {
+        responseData.playerId = session.metadata.playerId;
+      }
+
+      res.status(200).json(responseData);
     }
   } catch (error) {
     console.error('Error verifying payment:', error);
@@ -452,13 +637,24 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
  */
 router.get('/prices', async (req, res) => {
   try {
-    // In production, you'd fetch this from Stripe
-    // For now, return the configured price
+    // Return all available price IDs
     res.status(200).json({
       prices: [
         {
-          id: 'price_1SQOyhPIlfT968CUdrbeDRTm',
+          id: process.env.STRIPE_PRICE_TEAM || 'price_1SQOyhPIlfT968CUdrbeDRTm',
           productName: 'Team Registration',
+          currency: 'usd',
+          type: 'one_time'
+        },
+        {
+          id: process.env.STRIPE_PRICE_PLAYER_CAMP || 'price_player_camp',
+          productName: 'Player Camp Registration',
+          currency: 'usd',
+          type: 'one_time'
+        },
+        {
+          id: process.env.STRIPE_PRICE_PLAYER_METRICS || 'price_player_metrics',
+          productName: 'Player Metrics',
           currency: 'usd',
           type: 'one_time'
         }

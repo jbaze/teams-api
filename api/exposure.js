@@ -3,7 +3,7 @@ const crypto = require('crypto');
 const authManager = require('./auth-manager');
 const router = express.Router();
 
-const EXPOSURE_USERNAME = 'techup.exposure';
+const EXPOSURE_USERNAME = 'techup';
 const EXPOSURE_PASSWORD = '_Virtual07!';
 
 // Exposure Events API configuration
@@ -749,6 +749,11 @@ router.put('/teams/:teamId', async (req, res) => {
       teamData.Players = playersInput.map(player => {
         const playerData = {};
         
+        // Player ID (for updating existing players)
+        if (player.id !== undefined || player.Id !== undefined) {
+          playerData.Id = player.id || player.Id;
+        }
+        
         if (player.firstName || player.FirstName) playerData.FirstName = player.firstName || player.FirstName;
         if (player.lastName || player.LastName) playerData.LastName = player.lastName || player.LastName;
         if (player.city || player.City) playerData.City = player.city || player.City;
@@ -765,7 +770,8 @@ router.put('/teams/:teamId', async (req, res) => {
         if (player.grade || player.Grade) playerData.Grade = player.grade || player.Grade;
         if (player.school || player.School) playerData.School = player.school || player.School;
         if (player.number !== undefined || player.Number !== undefined) playerData.Number = player.number || player.Number;
-        if (player.active !== undefined || player.Active !== undefined) playerData.Active = player.active || player.Active;
+        
+        playerData.Active = player.active !== undefined ? player.active : (player.Active !== undefined ? player.Active : false);
         
         return playerData;
       });
