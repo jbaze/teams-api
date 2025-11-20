@@ -53,6 +53,15 @@ let paymentSessions = [];
  *               cancelUrl:
  *                 type: string
  *           examples:
+ *             teamU12Payment:
+ *               summary: Team Registration
+ *               value:
+ *                 teamId: team-123
+ *                 teamName: Team Exposure
+ *                 paymentType: team
+ *                 quantity: 1
+ *                 successUrl: https://yourdomain.com/success?session_id={CHECKOUT_SESSION_ID}
+ *                 cancelUrl: https://yourdomain.com/cancel
  *             teamPayment:
  *               summary: Team Registration
  *               value:
@@ -141,7 +150,7 @@ router.post('/create-checkout-session', async (req, res) => {
       playerId,
       playerFirstName,
       playerLastName,
-      paymentType, // 'team', 'camp', or 'metrics'
+      paymentType, // 'team', 'team-u12', 'camp', or 'metrics'
       priceId, // Optional: override automatic price selection
       quantity = 1,
       successUrl,
@@ -169,10 +178,13 @@ router.post('/create-checkout-session', async (req, res) => {
         case 'metrics':
           finalPriceId = process.env.STRIPE_PRICE_PLAYER_METRICS;
           break;
+        case 'team-u12':
+          finalPriceId = process.env.STRIPE_PRICE_TEAM_U12;
+          break;
         default:
           return res.status(400).json({
             error: 'Bad Request',
-            message: 'Invalid paymentType. Must be "team", "camp", or "metrics"'
+            message: 'Invalid paymentType. Must be "team", "team-u12", "camp", or "metrics"'
           });
       }
     }
