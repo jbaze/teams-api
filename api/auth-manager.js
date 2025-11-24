@@ -16,10 +16,10 @@ class AuthManager {
    * Authenticate with Exposure Events and store decoded API keys
    * @param {string} username - Event director username
    * @param {string} password - Event director password
-   * @param {string} baseUrl - Base URL for authentication (default: baseball.exposureevents.com)
+   * @param {string} baseUrl - Base URL for authentication (default: softball.exposureevents.com)
    * @returns {Promise<object>} Authentication result
    */
-  async authenticate(username, password, baseUrl = 'https://baseball.exposureevents.com') {
+  async authenticate(username, password, baseUrl = 'https://softball.exposureevents.com') {
     if (!username || !password) {
       throw new Error('Username and password are required');
     }
