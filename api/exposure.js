@@ -7,7 +7,7 @@ const EXPOSURE_USERNAME = 'tcaymol';
 const EXPOSURE_PASSWORD = 'Buggy4498!';
 
 // Exposure Events API configuration
-const EXPOSURE_BASE_URL = process.env.EXPOSURE_BASE_URL || 'https://baseball.exposureevents.com/api/v1';
+const EXPOSURE_BASE_URL = process.env.EXPOSURE_BASE_URL || 'https://softball.exposureevents.com/api/v1';
 
 // Helper function to create HMAC-SHA256 signature
 function createSignature(apiKey, httpVerb, timestamp, relativeUri, secretKey) {
