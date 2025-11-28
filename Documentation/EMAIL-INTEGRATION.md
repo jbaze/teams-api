@@ -15,7 +15,7 @@ All registration emails contain the following message:
 ### Brevo API Key
 The API uses the following Brevo API key (configured in `api/email-service.js`):
 ```
-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
+YOUR_API_KEY
 ```
 
 ### Sender Information

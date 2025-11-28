@@ -1,7 +1,7 @@
 const SibApiV3Sdk = require('@sendinblue/client');
 
 // Brevo API configuration from environment variables
-const BREVO_API_KEY = process.env.BREVO_API_KEY || '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';
+const BREVO_API_KEY = process.env.BREVO_API_KEY || 'YOUR_API_KEY';
 const SENDER_EMAIL = process.env.SENDER_EMAIL || 'noreply@dc34memorial.com';
 const BCC_EMAIL = process.env.BCC_EMAIL; // Optional BCC recipient
 

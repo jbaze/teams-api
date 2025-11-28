@@ -46,7 +46,7 @@ All requested features have been successfully implemented and tested.
 ## 🎯 Email Configuration
 
 ```
-Brevo API Key: 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
+Brevo API Key: YOUR_API_KEY
 Sender Name:   DC34 Memorial Invitational
 Sender Email:  noreply@dc34memorial.com
 ```
