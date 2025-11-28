@@ -18,6 +18,22 @@ npm run dev
 
 The API will be available at `http://localhost:3000`
 
+## 📧 Email Integration (NEW!)
+
+This API now includes automatic email notifications via Brevo for team and player registrations!
+
+**Quick Email Test:**
+```bash
+# Create a team with email
+curl -X POST http://localhost:3000/api/v1/teams \
+  -H "Content-Type: application/json" \
+  -d '{"divisionId": 1000, "name": "Test Team", "email": "your@email.com"}'
+```
+
+**Email Content:** Registration confirmation for DC34 Memorial Invitational (May 30-31, 2026)
+
+📖 **Full Documentation:** See [EMAIL-INTEGRATION.md](./EMAIL-INTEGRATION.md) and [EMAIL-QUICKSTART.md](../EMAIL-QUICKSTART.md)
+
 ## 📦 Deployment
 
 ### Deploy to Vercel (Recommended)
@@ -175,11 +191,12 @@ curl http://localhost:3000/api/v1/teams?divisionId=100&page=1&pageSize=20
 
 ### 2. POST /api/v1/teams
 
-Create a new team.
+Create a new team. **Automatically sends a registration confirmation email to the provided email address.**
 
 **Required Fields:**
 - `divisionId` (number)
 - `name` (string)
+- `email` (string) - **NEW!** Team contact email for registration confirmation
 
 **Optional Fields:**
 - `gender` (number)
@@ -203,6 +220,7 @@ curl -X POST http://localhost:3000/api/v1/teams \
   -d '{
     "divisionId": 1000,
     "name": "Team Exposure",
+    "email": "coach@teamexposure.com",
     "gender": 2,
     "paid": true,
     "status": 1,
@@ -233,10 +251,12 @@ curl -X POST http://localhost:3000/api/v1/teams \
 ```json
 {
   "message": "Team created successfully",
+  "emailSent": true,
   "team": {
     "id": "123e4567-e89b-12d3-a456-426614174000",
     "divisionId": 1000,
     "name": "Team Exposure",
+    "email": "coach@teamexposure.com",
     "gender": 2,
     "paid": true,
     "status": 1,
@@ -268,10 +288,14 @@ curl -X POST http://localhost:3000/api/v1/teams \
 
 ### 3. PUT /api/v1/teams
 
-Update an existing team. Only the fields provided in the request will be updated.
+Update an existing team. Only the fields provided in the request will be updated. **If updating players with email addresses, registration confirmation emails will be automatically sent.**
 
 **Query Parameters:**
 - `id` (required) - The team ID to update
+
+**Player Email Support (NEW!):**
+- When adding/updating players, include an `email` field to send registration confirmation
+- Players without email addresses are added normally without email notification
 
 **Example:**
 
@@ -466,8 +490,11 @@ app.use('/api/v1/teams', authenticateApiKey);
 ✅ Pagination support  
 ✅ Filtering by division  
 ✅ Partial updates (PUT only updates provided fields)  
+✅ **Email notifications via Brevo** (NEW!)  
+✅ Automatic registration confirmation emails  
 ✅ Error handling  
 ✅ CORS enabled  
+✅ Swagger/OpenAPI documentation  
 ✅ Ready for Vercel/Netlify deployment  
 ✅ In-memory data storage (easily replaceable with a database)
 

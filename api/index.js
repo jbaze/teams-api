@@ -5,8 +5,12 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('../swagger');
 const paymentRoutes = require('./payments');
 const exposureRoutes = require('./exposure');
+const { sendRegistrationEmail } = require('./email-service');
+const { EmailExportRecipients } = require('@sendinblue/client');
 
 const app = express();
+
+console.log('🔄 API MODULE LOADED AT:', new Date().toISOString());
 
 // Middleware
 app.use(cors());
@@ -215,6 +219,11 @@ app.get('/api/v1/teams', (req, res) => {
  *               name:
  *                 type: string
  *                 example: Team Exposure
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 description: Team contact email for registration confirmation
+ *                 example: coach@teamexposure.com
  *               gender:
  *                 type: integer
  *                 example: 2
@@ -244,6 +253,10 @@ app.get('/api/v1/teams', (req, res) => {
  *                       type: string
  *                     lastName:
  *                       type: string
+ *                     email:
+ *                       type: string
+ *                       format: email
+ *                       description: Player email for registration confirmation
  *                     number:
  *                       type: string
  *               notes:
@@ -282,11 +295,14 @@ app.get('/api/v1/teams', (req, res) => {
  *         description: Internal server error
  */
 // POST /api/v1/teams - Create a new team
-app.post('/api/v1/teams', (req, res) => {
+app.post('/api/v1/teams', async (req, res) => {
+  console.log('===== LOCAL POST /api/v1/teams CALLED =====');
+  console.log('Request body:', JSON.stringify(req.body, null, 2));
   try {
     const {
       divisionId,
       name,
+      email,
       gender,
       paid = false,
       status = 1,
@@ -316,11 +332,13 @@ app.post('/api/v1/teams', (req, res) => {
       });
     }
 
+
     // Create new team
     const newTeam = {
       id: uuidv4(),
       divisionId: parseInt(divisionId),
       name,
+      email,
       gender: gender || null,
       paid: Boolean(paid),
       status: parseInt(status) || 1,
@@ -339,9 +357,18 @@ app.post('/api/v1/teams', (req, res) => {
 
     teams.push(newTeam);
 
+    console.log('Team email:', email);
+
+    // Send registration confirmation email
+    let emailResult = null;
+    if (email) {
+      emailResult = await sendRegistrationEmail(email, name);
+    }
+    
     res.status(201).json({
       message: 'Team created successfully',
-      team: newTeam
+      team: newTeam,
+      emailSent: emailResult ? emailResult.success : false
     });
   } catch (error) {
     res.status(500).json({
@@ -425,7 +452,7 @@ app.post('/api/v1/teams', (req, res) => {
  *         description: Internal server error
  */
 // PUT /api/v1/teams - Update an existing team
-app.put('/api/v1/teams', (req, res) => {
+app.put('/api/v1/teams', async (req, res) => {
   try {
     const { id } = req.query;
 
@@ -470,9 +497,25 @@ app.put('/api/v1/teams', (req, res) => {
 
     teams[teamIndex] = updatedTeam;
 
+    // Send registration emails to players if they have email addresses
+    const emailResults = [];
+    if (req.body.players && Array.isArray(req.body.players)) {
+      for (const player of req.body.players) {
+        if (player.email) {
+          const playerName = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+          const emailResult = await sendRegistrationEmail(player.email, playerName || 'Player');
+          emailResults.push({
+            email: player.email,
+            sent: emailResult.success
+          });
+        }
+      }
+    }
+
     res.status(200).json({
       message: 'Team updated successfully',
-      team: updatedTeam
+      team: updatedTeam,
+      emailsSent: emailResults.length > 0 ? emailResults : undefined
     });
   } catch (error) {
     res.status(500).json({

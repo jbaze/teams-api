@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const authManager = require('./auth-manager');
+const { sendRegistrationEmail } = require('./email-service');
 const router = express.Router();
 
 const EXPOSURE_USERNAME = 'tcaymol';
@@ -472,6 +473,11 @@ router.get('/teams/:teamId', async (req, res) => {
  *               Name:
  *                 type: string
  *                 example: Team Exposure
+ *               Email:
+ *                 type: string
+ *                 format: email
+ *                 description: Team contact email for registration confirmation
+ *                 example: coach@teamexposure.com
  *               Gender:
  *                 type: integer
  *                 example: 2
@@ -501,6 +507,10 @@ router.get('/teams/:teamId', async (req, res) => {
  *                       type: string
  *                     LastName:
  *                       type: string
+ *                     Email:
+ *                       type: string
+ *                       format: email
+ *                       description: Player email for registration confirmation
  *                     Number:
  *                       type: string
  *               Notes:
@@ -527,6 +537,9 @@ router.get('/teams/:teamId', async (req, res) => {
  */
 router.post('/teams', async (req, res) => {
   try {
+    // Extract email from request (support both camelCase and PascalCase)
+    const teamEmail = req.body.email || req.body.Email;
+    
     // Transform frontend data to Exposure Events format
     const teamData = {
       EventId: req.body.eventId || req.body.EventId,
@@ -547,7 +560,18 @@ router.post('/teams', async (req, res) => {
     };
 
     const data = await exposureRequest('/teams', 'POST', teamData);
-    res.status(201).json(data);
+    
+    // Send registration email if email is provided
+    let emailResult = null;
+    if (teamEmail) {
+      console.log('Sending registration email to:', teamEmail);
+      emailResult = await sendRegistrationEmail(teamEmail, teamData.Name);
+    }
+    
+    res.status(201).json({
+      ...data,
+      emailSent: emailResult ? emailResult.success : false
+    });
   } catch (error) {
     res.status(500).json({
       error: 'Failed to create team',
@@ -664,6 +688,10 @@ router.post('/teams', async (req, res) => {
  *                     School:
  *                       type: string
  *                       description: School name
+ *                     Email:
+ *                       type: string
+ *                       format: email
+ *                       description: Player email for registration confirmation
  *                     Number:
  *                       type: integer
  *                       description: Jersey number (max 3 digits)
@@ -780,7 +808,31 @@ router.put('/teams/:teamId', async (req, res) => {
     console.log('Update data being sent:', JSON.stringify(teamData, null, 2));
 
     const data = await exposureRequest(`/teams`, 'PUT', teamData);
-    res.json(data);
+    
+    // Send registration emails to players if they have email addresses
+    const emailResults = [];
+    if (req.body.players || req.body.Players) {
+      const playersInput = req.body.players || req.body.Players;
+      for (const player of playersInput) {
+        const playerEmail = player.email || player.Email;
+        if (playerEmail) {
+          const firstName = player.firstName || player.FirstName || '';
+          const lastName = player.lastName || player.LastName || '';
+          const playerName = `${firstName} ${lastName}`.trim();
+          console.log('Sending registration email to player:', playerEmail);
+          const emailResult = await sendRegistrationEmail(playerEmail, playerName || 'Player');
+          emailResults.push({
+            email: playerEmail,
+            sent: emailResult.success
+          });
+        }
+      }
+    }
+    
+    res.json({
+      ...data,
+      emailsSent: emailResults.length > 0 ? emailResults : undefined
+    });
   } catch (error) {
     res.status(500).json({
       error: 'Failed to update team',
