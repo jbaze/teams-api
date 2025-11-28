@@ -65,6 +65,12 @@ const options = {
               description: 'Team name',
               example: 'Team Exposure'
             },
+            email: {
+              type: 'string',
+              format: 'email',
+              description: 'Team contact email for registration confirmation',
+              example: 'coach@teamexposure.com'
+            },
             gender: {
               type: 'integer',
               description: 'Gender identifier (1=Male, 2=Female)',
@@ -96,6 +102,7 @@ const options = {
                   externalPlayerId: { type: 'string', example: 'P1' },
                   firstName: { type: 'string', example: 'John' },
                   lastName: { type: 'string', example: 'Doe' },
+                  email: { type: 'string', format: 'email', example: 'john.doe@example.com', description: 'Player email for registration confirmation' },
                   number: { type: 'string', example: '23' }
                 }
               }
