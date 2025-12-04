@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const authManager = require('./auth-manager');
 const { sendRegistrationEmail } = require('./email-service');
+const { saveTeamToSheets, savePlayersToSheets } = require('./sheets-service');
 const router = express.Router();
 
 const EXPOSURE_USERNAME = 'tcaymol';
@@ -567,6 +568,16 @@ router.post('/teams', async (req, res) => {
       console.log('Sending registration email to:', teamEmail);
       emailResult = await sendRegistrationEmail(teamEmail, teamData.Name);
     }
+
+    // Save team data to Google Sheets (with the ID returned from Exposure API and email)
+    const teamDataWithId = {
+      ...teamData,
+      Id: data.id || data.Id,
+      id: data.id || data.Id,
+      Email: teamEmail,
+      email: teamEmail
+    };
+    await saveTeamToSheets(teamDataWithId, 'created');
     
     res.status(201).json({
       ...data,
@@ -714,9 +725,14 @@ router.put('/teams/:teamId', async (req, res) => {
     console.log('Team ID:', teamId);
     console.log('Request body:', JSON.stringify(req.body, null, 2));
 
+    // Extract email from request (support both camelCase and PascalCase)
+    const teamEmail = req.body.email || req.body.Email;
+
     // Build update data - only include fields that are provided in the request
     const teamData = {
-      Id: parseInt(teamId)
+      Id: parseInt(teamId),
+      Email: teamEmail,
+      email: teamEmail
     };
 
     // Add all possible fields if they are provided (supports both camelCase and PascalCase)
@@ -827,6 +843,12 @@ router.put('/teams/:teamId', async (req, res) => {
           });
         }
       }
+    }
+
+    // Save player data to Google Sheets
+    if (req.body.players || req.body.Players) {
+      const playersInput = req.body.players || req.body.Players;
+      await savePlayersToSheets(teamData, playersInput);
     }
     
     res.json({

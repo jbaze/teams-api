@@ -6,6 +6,7 @@ const swaggerSpec = require('../swagger');
 const paymentRoutes = require('./payments');
 const exposureRoutes = require('./exposure');
 const { sendRegistrationEmail } = require('./email-service');
+const { saveTeamToSheets } = require('./sheets-service');
 const { EmailExportRecipients } = require('@sendinblue/client');
 
 const app = express();
@@ -364,6 +365,9 @@ app.post('/api/v1/teams', async (req, res) => {
     if (email) {
       emailResult = await sendRegistrationEmail(email, name);
     }
+
+    // Save team data to Google Sheets (ensure email is included)
+    await saveTeamToSheets(newTeam, 'created');
     
     res.status(201).json({
       message: 'Team created successfully',
@@ -510,6 +514,12 @@ app.put('/api/v1/teams', async (req, res) => {
           });
         }
       }
+    }
+
+    // Save player data to Google Sheets
+    const { savePlayersToSheets } = require('./sheets-service');
+    if (req.body.players && req.body.players.length > 0) {
+      await savePlayersToSheets(updatedTeam, req.body.players);
     }
 
     res.status(200).json({

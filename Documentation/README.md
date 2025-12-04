@@ -18,9 +18,9 @@ npm run dev
 
 The API will be available at `http://localhost:3000`
 
-## 📧 Email Integration (NEW!)
+## 📧 Email Integration
 
-This API now includes automatic email notifications via Brevo for team and player registrations!
+This API includes automatic email notifications via Brevo for team and player registrations!
 
 **Quick Email Test:**
 ```bash
@@ -33,6 +33,23 @@ curl -X POST http://localhost:3000/api/v1/teams \
 **Email Content:** Registration confirmation for DC34 Memorial Invitational (May 30-31, 2026)
 
 📖 **Full Documentation:** See [EMAIL-INTEGRATION.md](./EMAIL-INTEGRATION.md) and [EMAIL-QUICKSTART.md](../EMAIL-QUICKSTART.md)
+
+## 📊 Google Sheets Integration (NEW!)
+
+This API automatically logs team registrations and player updates to Google Sheets, organized by U-Number category!
+
+**What gets logged:**
+- ✅ **POST /api/v1/teams** - All team details saved to category-specific sheets (e.g., `Teams_U12`)
+- ✅ **POST /api/v1/exposure/teams** - All team details saved to category-specific sheets
+- ✅ **PUT /api/v1/teams** - Player details saved to category-specific sheets (e.g., `Players_U12`)
+- ✅ **PUT /api/v1/exposure/teams/:teamId** - Player details saved to category-specific sheets
+
+**Category Organization:**
+- Each U-Number category (U10, U12, U14, etc.) gets its own sheets
+- Teams and players are automatically organized by category
+- Easy to filter and analyze data by age group
+
+📖 **Setup Guide:** See [GOOGLE-SHEETS-SETUP.md](./GOOGLE-SHEETS-SETUP.md) for complete configuration instructions
 
 ## 📦 Deployment
 
@@ -490,8 +507,10 @@ app.use('/api/v1/teams', authenticateApiKey);
 ✅ Pagination support  
 ✅ Filtering by division  
 ✅ Partial updates (PUT only updates provided fields)  
-✅ **Email notifications via Brevo** (NEW!)  
+✅ **Email notifications via Brevo**  
+✅ **Google Sheets integration** (NEW!)  
 ✅ Automatic registration confirmation emails  
+✅ Category-based data organization (U-Number)  
 ✅ Error handling  
 ✅ CORS enabled  
 ✅ Swagger/OpenAPI documentation  
