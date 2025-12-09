@@ -278,11 +278,12 @@ async function getOrCreatePlayerSheetForCategory(category) {
       'State/Region',
       'Postal Code',
       'Active',
+      'Phone Number',
     ];
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A1:N1`,
+      range: `${sheetName}!A1:O1`,
       valueInputOption: 'RAW',
       resource: {
         values: [headers],
@@ -334,6 +335,7 @@ async function savePlayersToSheets(teamData, players) {
       const city = player.city || player.City || '';
       const stateRegion = player.stateRegion || player.StateRegion || '';
       const postalCode = player.postalCode || player.PostalCode || '';
+      const phoneNumber = player.phone || player.Phone || player.phoneNumber || player.PhoneNumber || '';
       const active = player.active !== undefined ? player.active : (player.Active !== undefined ? player.Active : true);
 
       return [
@@ -351,13 +353,14 @@ async function savePlayersToSheets(teamData, players) {
         stateRegion,
         postalCode,
         active,
+        phoneNumber,
       ];
     });
 
     // Append rows to sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A:N`,
+      range: `${sheetName}!A:O`,
       valueInputOption: 'RAW',
       resource: {
         values: rows,

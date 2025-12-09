@@ -703,6 +703,9 @@ router.post('/teams', async (req, res) => {
  *                       type: string
  *                       format: email
  *                       description: Player email for registration confirmation
+ *                     Phone:
+ *                       type: string
+ *                       description: Player phone number (e.g., +12345678901)
  *                     Number:
  *                       type: integer
  *                       description: Jersey number (max 3 digits)
@@ -813,6 +816,10 @@ router.put('/teams/:teamId', async (req, res) => {
         }
         if (player.grade || player.Grade) playerData.Grade = player.grade || player.Grade;
         if (player.school || player.School) playerData.School = player.school || player.School;
+        if (player.email || player.Email) playerData.Email = player.email || player.Email;
+        if (player.phone || player.Phone || player.phoneNumber || player.PhoneNumber) {
+          playerData.PhoneNumber = player.phone || player.Phone || player.phoneNumber || player.PhoneNumber;
+        }
         if (player.number !== undefined || player.Number !== undefined) playerData.Number = player.number || player.Number;
         
         playerData.Active = player.active !== undefined ? player.active : (player.Active !== undefined ? player.Active : false);
