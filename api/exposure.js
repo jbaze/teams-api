@@ -538,9 +538,10 @@ router.get('/teams/:teamId', async (req, res) => {
  */
 router.post('/teams', async (req, res) => {
   try {
-    // Extract email from request (support both camelCase and PascalCase)
+    // Extract email and phone from request (support both camelCase and PascalCase)
     const teamEmail = req.body.email || req.body.Email;
-    
+    const teamPhone = req.body.phone || req.body.Phone || req.body.phoneNumber || req.body.PhoneNumber;
+
     // Transform frontend data to Exposure Events format
     const teamData = {
       EventId: req.body.eventId || req.body.EventId,
@@ -569,13 +570,15 @@ router.post('/teams', async (req, res) => {
       emailResult = await sendRegistrationEmail(teamEmail, teamData.Name);
     }
 
-    // Save team data to Google Sheets (with the ID returned from Exposure API and email)
+    // Save team data to Google Sheets (with the ID returned from Exposure API, email and phone)
     const teamDataWithId = {
       ...teamData,
       Id: data.id || data.Id,
       id: data.id || data.Id,
       Email: teamEmail,
-      email: teamEmail
+      email: teamEmail,
+      Phone: teamPhone,
+      phone: teamPhone
     };
     await saveTeamToSheets(teamDataWithId, 'created');
     
@@ -728,14 +731,17 @@ router.put('/teams/:teamId', async (req, res) => {
     console.log('Team ID:', teamId);
     console.log('Request body:', JSON.stringify(req.body, null, 2));
 
-    // Extract email from request (support both camelCase and PascalCase)
+    // Extract email and phone from request (support both camelCase and PascalCase)
     const teamEmail = req.body.email || req.body.Email;
+    const teamPhone = req.body.phone || req.body.Phone || req.body.phoneNumber || req.body.PhoneNumber;
 
     // Build update data - only include fields that are provided in the request
     const teamData = {
       Id: parseInt(teamId),
       Email: teamEmail,
-      email: teamEmail
+      email: teamEmail,
+      Phone: teamPhone,
+      phone: teamPhone
     };
 
     // Add all possible fields if they are provided (supports both camelCase and PascalCase)
