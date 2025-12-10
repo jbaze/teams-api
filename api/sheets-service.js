@@ -101,6 +101,7 @@ async function getOrCreateSheetForCategory(category) {
       'Team Name',
       'Division ID',
       'Email',
+      'Phone',
       'State/Region',
       'Notes',
       'Abbreviation',
@@ -111,7 +112,7 @@ async function getOrCreateSheetForCategory(category) {
 
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A1:L1`,
+      range: `${sheetName}!A1:M1`,
       valueInputOption: 'RAW',
       resource: {
         values: [headers],
@@ -174,7 +175,8 @@ async function saveTeamToSheets(teamData, action = 'created') {
     const teamName = teamData.name || teamData.Name || '';
     const divisionId = teamData.divisionId || teamData.DivisionId || '';
     const email = teamData.email || teamData.Email || '';
-    
+    const phone = teamData.phone || teamData.Phone || teamData.phoneNumber || teamData.PhoneNumber || '';
+
     const address = teamData.address || teamData.Address || {};
     const stateRegion = address.stateRegion || address.StateRegion || '';
     
@@ -196,6 +198,7 @@ async function saveTeamToSheets(teamData, action = 'created') {
       teamName,
       divisionId,
       email,
+      phone,
       stateRegion,
       notes,
       abbreviation,
@@ -207,7 +210,7 @@ async function saveTeamToSheets(teamData, action = 'created') {
     // Append row to sheet
     await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: `${sheetName}!A:L`,
+      range: `${sheetName}!A:M`,
       valueInputOption: 'RAW',
       resource: {
         values: [rowData],
