@@ -3,8 +3,10 @@ notepad .gitignore
 
 Make sure it has:
 ```
+temp_auto_push.bat
 node_modules/
 package-lock.json
 .env
 .DS_Store
 *.log
+temp_interactive_push.bat
