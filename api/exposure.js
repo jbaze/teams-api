@@ -543,6 +543,19 @@ router.post('/teams', async (req, res) => {
     const teamPhone = req.body.phone || req.body.Phone || req.body.phoneNumber || req.body.PhoneNumber;
 
     // Transform frontend data to Exposure Events format
+    // Transform players to use correct field names for Exposure API (Phone instead of PhoneNumber)
+    const playersInput = req.body.players || req.body.Players || [];
+    const transformedPlayers = playersInput.map(player => {
+      const playerData = { ...player };
+      // Exposure API expects 'Phone' not 'PhoneNumber'
+      if (player.phoneNumber || player.PhoneNumber) {
+        playerData.Phone = player.phoneNumber || player.PhoneNumber;
+        delete playerData.phoneNumber;
+        delete playerData.PhoneNumber;
+      }
+      return playerData;
+    });
+
     const teamData = {
       EventId: req.body.eventId || req.body.EventId,
       DivisionId: req.body.divisionId || req.body.DivisionId,
@@ -551,7 +564,7 @@ router.post('/teams', async (req, res) => {
       Paid: req.body.paid || req.body.Paid || false,
       Status: req.body.status || req.body.Status || 1,
       Address: req.body.address || req.body.Address,
-      Players: req.body.players || req.body.Players || [],
+      Players: transformedPlayers,
       Notes: req.body.notes || req.body.Notes || '',
       Website: req.body.website || req.body.Website || '',
       TwitterHandle: req.body.twitterHandle || req.body.TwitterHandle || '',
@@ -824,7 +837,7 @@ router.put('/teams/:teamId', async (req, res) => {
         if (player.school || player.School) playerData.School = player.school || player.School;
         if (player.email || player.Email) playerData.Email = player.email || player.Email;
         if (player.phone || player.Phone || player.phoneNumber || player.PhoneNumber) {
-          playerData.PhoneNumber = player.phone || player.Phone || player.phoneNumber || player.PhoneNumber;
+          playerData.Phone = player.phone || player.Phone || player.phoneNumber || player.PhoneNumber;
         }
         if (player.number !== undefined || player.Number !== undefined) playerData.Number = player.number || player.Number;
         
